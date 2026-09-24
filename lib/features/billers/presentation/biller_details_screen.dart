@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:billbuddy/features/billers/domain/biller.dart';
 import 'package:billbuddy/features/billers/domain/saved_biller.dart';
+import 'package:billbuddy/features/billers/presentation/bill_provider.dart';
 
-class BillerDetailsScreen extends StatelessWidget {
+class BillerDetailsScreen extends ConsumerWidget {
   const BillerDetailsScreen({
     super.key,
     required this.biller,
@@ -14,7 +16,11 @@ class BillerDetailsScreen extends StatelessWidget {
   final SavedBiller savedBiller;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final billAsync = ref.watch(
+      billProvider(savedBiller.id),
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: Text(savedBiller.nickname),
@@ -116,43 +122,66 @@ class BillerDetailsScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const Text(
-                    'No bill fetched yet.',
-                  ),
+          billAsync.when(
+            loading: () => const Card(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            ),
 
-                  const SizedBox(height: 16),
+            error: (error, stackTrace) => Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Unable to fetch your bill.',
+                      textAlign: TextAlign.center,
+                    ),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: FilledButton.icon(
+                    const SizedBox(height: 16),
+
+                    FilledButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Fetch Bill will be implemented next.',
-                            ),
-                          ),
+                        ref.invalidate(
+                          billProvider(savedBiller.id),
                         );
                       },
                       icon: const Icon(
                         Icons.refresh,
                       ),
                       label: const Text(
-                        'Fetch Bill',
+                        'Retry',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            data: (bill) {
+              if (bill == null || !bill.isDue) {
+                return const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Center(
+                      child: Text(
+                        'No bill is currently due.',
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
+                );
+              }
+
+              return _BillCard(
+                amount: bill.amount,
+                dueDate: bill.dueDate,
+                billingPeriod: bill.billingPeriod,
+              );
+            },
           ),
         ],
       ),
@@ -185,4 +214,126 @@ class BillerDetailsScreen extends StatelessWidget {
         return 'Credit Card';
     }
   }
+}
+
+class _BillCard extends StatelessWidget {
+  const _BillCard({
+    required this.amount,
+    required this.dueDate,
+    required this.billingPeriod,
+  });
+
+  final double amount;
+  final DateTime dueDate;
+  final String billingPeriod;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Current Due',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium,
+            ),
+
+            const SizedBox(height: 8),
+
+            Text(
+              '₹${amount.toStringAsFixed(2)}',
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+
+            const SizedBox(height: 20),
+
+            const Divider(),
+
+            const SizedBox(height: 16),
+
+            _BillInfoRow(
+              label: 'Due Date',
+              value: _formatDate(dueDate),
+            ),
+
+            const SizedBox(height: 12),
+
+            _BillInfoRow(
+              label: 'Billing Period',
+              value: billingPeriod,
+            ),
+
+            const SizedBox(height: 24),
+
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: FilledButton.icon(
+                onPressed: () {
+                  ScaffoldMessenger.of(context)
+                    ..hideCurrentSnackBar()
+                    ..showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Pay Bill will be implemented next.',
+                        ),
+                      ),
+                    );
+                },
+                icon: const Icon(
+                  Icons.payment,
+                ),
+                label: const Text(
+                  'Pay Bill',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BillInfoRow extends StatelessWidget {
+  const _BillInfoRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment:
+          MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(value),
+      ],
+    );
+  }
+}
+
+String _formatDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/'
+      '${date.year}';
 }
