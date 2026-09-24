@@ -1,5 +1,7 @@
 const authRoutes = require('./src/routes/authRoutes');
-
+const billerRoutes = require('./src/routes/billerRoutes');
+const savedBillerRoutes = require('./src/routes/savedBillerRoutes');
+const billRoutes = require('./src/routes/billRoutes');
 
 require('dotenv').config();
 
@@ -14,6 +16,9 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/billers', billerRoutes);
+app.use('/api/my-billers', savedBillerRoutes);
+app.use('/api/my-billers', billRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({

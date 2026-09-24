@@ -1,22 +1,45 @@
+import 'package:dio/dio.dart';
+import 'package:billbuddy/core/errors/bank_error_mapper.dart';
+import 'package:billbuddy/core/network/dio_client.dart';
 import 'package:billbuddy/features/billers/domain/bill.dart';
 
 class BillRepository {
+  BillRepository(this._dioClient);
+
+  final DioClient _dioClient;
+  final BankErrorMapper _errorMapper = const BankErrorMapper();
+
   Future<Bill?> fetchBill({
     required String savedBillerId,
   }) async {
-    // Simulate a network request.
-    await Future<void>.delayed(
-      const Duration(seconds: 1),
-    );
+    try {
+      final response = await _dioClient.dio.get(
+        '/my-billers/$savedBillerId/bill',
+      );
 
-    // Mock bill returned by the server.
-    return Bill(
-      id: 'bill_001',
-      savedBillerId: savedBillerId,
-      amount: 1240.00,
-      dueDate: DateTime(2026, 9, 28),
-      billingPeriod: 'August 2026',
-      isDue: true,
-    );
+      final data = response.data['data'];
+
+      if (data == null) {
+        return null;
+      }
+
+      final json = data as Map<String, Object?>;
+
+      return Bill(
+        id: json['_id'] as String,
+        savedBillerId: json['savedBillerId'] as String,
+        amount: (json['amount'] as num).toDouble(),
+        dueDate: DateTime.parse(
+          json['dueDate'] as String,
+        ),
+        billingPeriod: json['billingPeriod'] as String,
+        isDue: json['isDue'] as bool,
+      );
+    } on DioException catch (error) {
+      throw _errorMapper.map(
+        error,
+        requestPath: '/my-billers/$savedBillerId/bill',
+      );
+    }
   }
 }
