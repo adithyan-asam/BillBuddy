@@ -1,25 +1,43 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:billbuddy/features/auth/presentation/auth_provider.dart';
+import 'package:billbuddy/features/billers/data/saved_biller_repository.dart';
 import 'package:billbuddy/features/billers/domain/saved_biller.dart';
 
+final savedBillerRepositoryProvider =
+    Provider<SavedBillerRepository>((ref) {
+  final dioClient = ref.read(dioClientProvider);
+
+  return SavedBillerRepository(dioClient);
+});
+
 class SavedBillersNotifier
-    extends Notifier<List<SavedBiller>> {
+    extends AsyncNotifier<List<SavedBiller>> {
+
   @override
-  List<SavedBiller> build() {
-    return [];
+  Future<List<SavedBiller>> build() async {
+    final repository =
+        ref.read(savedBillerRepositoryProvider);
+
+    return repository.getSavedBillers();
   }
 
-  void add(SavedBiller savedBiller) {
-    state = [
-      ...state,
-      savedBiller,
-    ];
+  Future<void> add(SavedBiller savedBiller) async {
+    final repository =
+        ref.read(savedBillerRepositoryProvider);
+
+    final savedBillerFromServer =
+        await repository.addBiller(savedBiller);
+
+    final currentBillers = state.value ?? [];
+
+    state = AsyncData([
+      ...currentBillers,
+      savedBillerFromServer,
+    ]);
   }
 }
 
 final savedBillersProvider =
-    NotifierProvider<
-        SavedBillersNotifier,
-        List<SavedBiller>>(
+    AsyncNotifierProvider<SavedBillersNotifier, List<SavedBiller>>(
   SavedBillersNotifier.new,
 );

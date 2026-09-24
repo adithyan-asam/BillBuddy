@@ -13,7 +13,7 @@ class DioClient {
   
   final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'http://10.84.115.228:5000/api',
+      baseUrl: 'http://10.84.115.83:5000/api',
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
       headers: {

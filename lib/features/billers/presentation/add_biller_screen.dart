@@ -15,6 +15,7 @@ class AddBillerScreen extends ConsumerStatefulWidget {
 }
 
 class _AddBillerScreenState extends ConsumerState<AddBillerScreen> {
+  bool _isSubmitting = false;
   final _formKey = GlobalKey<FormState>();
 
   final _nicknameController = TextEditingController();
@@ -132,8 +133,14 @@ class _AddBillerScreenState extends ConsumerState<AddBillerScreen> {
             SizedBox(
               height: 52,
               child: FilledButton(
-                onPressed: _addBiller,
-                child: const Text('Add Biller', style: TextStyle(fontSize: 16)),
+                onPressed: _isSubmitting ? null : _addBiller,
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Add Biller', style: TextStyle(fontSize: 16)),
               ),
             ),
           ],
@@ -142,10 +149,18 @@ class _AddBillerScreenState extends ConsumerState<AddBillerScreen> {
     );
   }
 
-  void _addBiller() {
+  Future<void> _addBiller() async {
+    if (_isSubmitting) {
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    setState(() {
+      _isSubmitting = true;
+    });
 
     final fieldValues = <String, String>{};
 
@@ -154,19 +169,39 @@ class _AddBillerScreenState extends ConsumerState<AddBillerScreen> {
     }
 
     final savedBiller = SavedBiller(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: '',
       billerId: widget.biller.id,
       nickname: _nicknameController.text.trim(),
       fields: fieldValues,
     );
 
-    ref.read(savedBillersProvider.notifier).add(savedBiller);
+    try {
+      await ref.read(savedBillersProvider.notifier).add(savedBiller);
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Biller added successfully.')),
-      );
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Biller added successfully.')),
+        );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   String _categoryLabel(BillerCategory category) {

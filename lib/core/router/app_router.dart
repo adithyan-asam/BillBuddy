@@ -94,7 +94,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final savedBillerId = state.pathParameters['id'];
 
-          final savedBillers = ref.read(savedBillersProvider);
+          final savedBillersAsync = ref.read(savedBillersProvider);
+
+          if (!savedBillersAsync.hasValue) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          }
+
+          final savedBillers = savedBillersAsync.value!;
 
           final savedBiller = savedBillers.firstWhere(
             (biller) => biller.id == savedBillerId,

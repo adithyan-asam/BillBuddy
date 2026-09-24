@@ -1,110 +1,36 @@
+import 'package:dio/dio.dart';
+
+import 'package:billbuddy/core/errors/bank_error_mapper.dart';
+import 'package:billbuddy/core/network/dio_client.dart';
 import 'package:billbuddy/features/billers/domain/biller.dart';
 
 class BillerRepository {
-  Future<List<Biller>> getBillers() async {
-    await Future<void>.delayed(
-      const Duration(milliseconds: 500),
-    );
+  BillerRepository(this._dioClient);
 
-    return const [
-      Biller(
-        id: 'electricity_001',
-        name: 'Maharashtra Electricity Board',
-        category: BillerCategory.electricity,
-        state: 'Maharashtra',
-        fields: [
-          BillerField(
-            key: 'consumerNumber',
-            label: 'Consumer Number',
-            regex: r'^\d{10}$',
-          ),
-        ],
-        allowsPartial: true,
-      ),
-      Biller(
-        id: 'water_001',
-        name: 'Mumbai Water Supply',
-        category: BillerCategory.water,
-        state: 'Maharashtra',
-        fields: [
-          BillerField(
-            key: 'consumerNumber',
-            label: 'Consumer Number',
-            regex: r'^\d{8}$',
-          ),
-        ],
-        allowsPartial: false,
-      ),
-      Biller(
-        id: 'gas_001',
-        name: 'Mahanagar Gas',
-        category: BillerCategory.gas,
-        state: 'Maharashtra',
-        fields: [
-          BillerField(
-            key: 'customerNumber',
-            label: 'Customer Number',
-            regex: r'^\d{10}$',
-          ),
-        ],
-        allowsPartial: false,
-      ),
-      Biller(
-        id: 'broadband_001',
-        name: 'JioFiber',
-        category: BillerCategory.broadband,
-        state: 'All India',
-        fields: [
-          BillerField(
-            key: 'accountNumber',
-            label: 'Account Number',
-            regex: r'^\d{10}$',
-          ),
-        ],
-        allowsPartial: true,
-      ),
-      Biller(
-        id: 'mobile_001',
-        name: 'Airtel',
-        category: BillerCategory.mobile,
-        state: 'All India',
-        fields: [
-          BillerField(
-            key: 'mobileNumber',
-            label: 'Mobile Number',
-            regex: r'^[6-9]\d{9}$',
-          ),
-        ],
-        allowsPartial: false,
-      ),
-      Biller(
-        id: 'dth_001',
-        name: 'Tata Play',
-        category: BillerCategory.dth,
-        state: 'All India',
-        fields: [
-          BillerField(
-            key: 'subscriberId',
-            label: 'Subscriber ID',
-            regex: r'^\d{10}$',
-          ),
-        ],
-        allowsPartial: false,
-      ),
-      Biller(
-        id: 'credit_card_001',
-        name: 'ICICI Credit Card',
-        category: BillerCategory.creditCard,
-        state: 'All India',
-        fields: [
-          BillerField(
-            key: 'cardNumber',
-            label: 'Card Number',
-            regex: r'^\d{16}$',
-          ),
-        ],
-        allowsPartial: true,
-      ),
-    ];
+  final DioClient _dioClient;
+  final BankErrorMapper _errorMapper =
+      const BankErrorMapper();
+
+  Future<List<Biller>> getBillers() async {
+    try {
+      final response = await _dioClient.dio.get(
+        '/billers',
+      );
+
+      final data = response.data['data'] as List<Object?>;
+
+      return data
+          .map(
+            (biller) => Biller.fromJson(
+              biller as Map<String, Object?>,
+            ),
+          )
+          .toList();
+    } on DioException catch (error) {
+      throw _errorMapper.map(
+        error,
+        requestPath: '/billers',
+      );
+    }
   }
 }
